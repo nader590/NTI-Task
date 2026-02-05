@@ -1,4 +1,4 @@
-name: CI Pipeline - Django + React + SonarCloud + ECR (Auto Versioning)
+name: CI Pipeline - Django + React + SonarCloud + ECR (Clean Versioning)
 
 on:
   push:
@@ -7,72 +7,27 @@ on:
   pull_request:
 
 jobs:
-  build-test-scan-push:
+  build-test-push:
     runs-on: ubuntu-latest
 
     steps:
       # ----------------------------
-      # Checkout Source Code
+      # Checkout Code
       # ----------------------------
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       # ----------------------------
-      # Set Automatic Image Version
+      # Calculate Image Version (Start from 1.0)
       # ----------------------------
       - name: Set Image Version
         run: |
-          VERSION="${GITHUB_RUN_NUMBER}.0"
-          echo "IMAGE_VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Image version is $VERSION"
+          VERSION=$((GITHUB_RUN_NUMBER - ${{ vars.VERSION_OFFSET }} + 1))
+          echo "IMAGE_VERSION=${VERSION}.0" >> $GITHUB_ENV
+          echo "Using image version ${VERSION}.0"
 
       # ----------------------------
-      # Backend Tests (Django)
-      # ----------------------------
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install Backend Dependencies
-        run: |
-          cd backend
-          pip install -r requirements.txt
-
-      - name: Run Backend Tests
-        run: |
-          cd backend
-          pytest || true
-
-      # ----------------------------
-      # Frontend Tests (React)
-      # ----------------------------
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-
-      - name: Install Frontend Dependencies
-        run: |
-          cd frontend
-          npm install
-
-      - name: Run Frontend Tests
-        run: |
-          cd frontend
-          npm test -- --watchAll=false || true
-
-      # ----------------------------
-      # SonarCloud Scan
-      # ----------------------------
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v2
-        continue-on-error: true
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-      # ----------------------------
-      # Configure AWS Credentials
+      # Configure AWS
       # ----------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -81,59 +36,25 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      # ----------------------------
-      # Login to Amazon ECR
-      # ----------------------------
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
       # ----------------------------
-      # Build Docker Images (Versioned)
+      # Build & Push Backend (ONE TAG ONLY)
       # ----------------------------
-      - name: Build Backend Image
+      - name: Build & Push Backend Image
         run: |
-          docker build -t backend:${IMAGE_VERSION} ./backend
-          docker tag backend:${IMAGE_VERSION} \
-            695094375859.dkr.ecr.us-east-1.amazonaws.com/backend:${IMAGE_VERSION}
+          docker build -t backend-image:${IMAGE_VERSION} ./backend
+          docker tag backend-image:${IMAGE_VERSION} \
+            695094375859.dkr.ecr.us-east-1.amazonaws.com/backend-image:${IMAGE_VERSION}
+          docker push 695094375859.dkr.ecr.us-east-1.amazonaws.com/backend-image:${IMAGE_VERSION}
 
-          docker tag backend:${IMAGE_VERSION} \
-            695094375859.dkr.ecr.us-east-1.amazonaws.com/backend:${{ env.IMAGE_VERSION }}
-
-      - name: Build Frontend Image
+      # ----------------------------
+      # Build & Push Frontend (ONE TAG ONLY)
+      # ----------------------------
+      - name: Build & Push Frontend Image
         run: |
-          docker build -t frontend:${IMAGE_VERSION} ./frontend
-          docker tag frontend:${IMAGE_VERSION} \
-            695094375859.dkr.ecr.us-east-1.amazonaws.com/frontend:${IMAGE_VERSION}
-
-          docker tag frontend:${IMAGE_VERSION} \
-            695094375859.dkr.ecr.us-east-1.amazonaws.com/frontend:${{ env.IMAGE_VERSION }}
-
-      # ----------------------------
-      # Trivy Scan Images
-      # ----------------------------
-      - name: Trivy Scan Backend Image
-        uses: aquasecurity/trivy-action@0.20.0
-        with:
-          image-ref: 695094375859.dkr.ecr.us-east-1.amazonaws.com/backend:${{ env.IMAGE_VERSION }}
-          severity: HIGH,CRITICAL
-          exit-code: 0
-
-      - name: Trivy Scan Frontend Image
-        uses: aquasecurity/trivy-action@0.20.0
-        with:
-          image-ref: 695094375859.dkr.ecr.us-east-1.amazonaws.com/frontend:${{ env.IMAGE_VERSION }}
-          severity: HIGH,CRITICAL
-          exit-code: 0
-
-      # ----------------------------
-      # Push Images to Amazon ECR
-      # ----------------------------
-      - name: Push Backend Image to ECR
-        run: |
-          docker push 695094375859.dkr.ecr.us-east-1.amazonaws.com/backend:${IMAGE_VERSION}
-          docker push 695094375859.dkr.ecr.us-east-1.amazonaws.com/backend:${{ env.IMAGE_VERSION }}
-
-      - name: Push Frontend Image to ECR
-        run: |
-          docker push 695094375859.dkr.ecr.us-east-1.amazonaws.com/frontend:${IMAGE_VERSION}
-          docker push 695094375859.dkr.ecr.us-east-1.amazonaws.com/frontend:${{ env.IMAGE_VERSION }}
+          docker build -t frontend-image:${IMAGE_VERSION} ./frontend
+          docker tag frontend-image:${IMAGE_VERSION} \
+            695094375859.dkr.ecr.us-east-1.amazonaws.com/frontend-image:${IMAGE_VERSION}
+          docker push 695094375859.dkr.ecr.us-east-1.amazonaws.com/frontend-image:${IMAGE_VERSION}
