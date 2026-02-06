@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: ahmed3013/backend_image:latest
+          image: 695094375859.dkr.ecr.us-east-1.amazonaws.com/image-backend:3.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
