@@ -51,3 +51,5 @@ lxml>=4.9.0,<5.0.0
 
 # Environment and Configuration
 python-dotenv>=1.0.0,<2.0.0
+django-prometheus
+
