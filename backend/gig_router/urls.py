@@ -4,8 +4,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from . import health_views
+from django.urls import include, path
+
 
 urlpatterns = [
+    path('', include('django_prometheus.urls')),
     # Health check endpoints
     path('health/', health_views.health_check, name='health_check'),
     path('health/ready/', health_views.readiness_check, name='readiness_check'),
