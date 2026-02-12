@@ -15,6 +15,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,backend', c
 
 # Application definition
 INSTALLED_APPS = [
+    'django_prometheus',
     'jazzmin',  # Must come before django.contrib.admin
     'django.contrib.admin',
     'django.contrib.auth',
